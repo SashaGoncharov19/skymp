@@ -15,42 +15,35 @@ jobs:
   #================================#
   build-windows:
     name: Build on Windows
-    # Use the latest Windows runner, which includes Visual Studio 2022
     runs-on: windows-latest
 
     steps:
-      # 1. Check out the repository and its submodules
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      # 2. Set up Node.js version 17.x
+      # FIX: Use Node.js 20.x to meet new dependency requirements
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '17.x'
+          node-version: '20.x'
 
-      # 3. Set up Python version 3.9
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
-      # 4. Install Yarn globally
       - name: Install Yarn
         run: npm install --global yarn
 
-      # 5. Configure the project with CMake.
-      # This creates the 'build' directory and generates project files.
+      # The yarn install step is now handled by the CMake script itself
       - name: Configure CMake
         run: cmake -B build
 
-      # 6. Build the project in Release mode.
       - name: Build with CMake
         run: cmake --build build --config Release
 
-      # 7. Upload the build artifacts (the content of build/dist)
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -62,29 +55,27 @@ jobs:
   #================================#
   build-linux:
     name: Build on Linux
-    # Run on Ubuntu 22.04 as specified in the docs
     runs-on: ubuntu-22.04
-
-    # Use the recommended Docker container which has all dependencies pre-installed
     container: skymp/skymp-vcpkg-deps:latest
 
     steps:
-      # 1. Check out the repository and its submodules
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
 
-      # 2. Configure the project using the provided wrapper script.
-      # The container already has all the necessary tools (Clang, CMake, Node, etc.).
+      # FIX: Explicitly set the compiler to help vcpkg detect the toolchain
+      - name: Set Compiler Environment
+        run: |
+          echo "CC=clang-15" >> $GITHUB_ENV
+          echo "CXX=clang++-15" >> $GITHUB_ENV
+
       - name: Configure with build script
         run: ./build.sh --configure -DCMAKE_BUILD_TYPE=Release
 
-      # 3. Build the project using the wrapper script and all available CPU cores.
       - name: Build with build script
         run: ./build.sh --build build --parallel $(nproc)
 
-      # 4. Upload the build artifacts (the content of build/dist)
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
